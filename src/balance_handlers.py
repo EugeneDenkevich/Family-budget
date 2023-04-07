@@ -25,17 +25,19 @@ def get_fuel():
 
 
 def get_dollar():
-    res = requests.get(url='https://myfin.by/currency/minsk')
-    soup = BeautifulSoup(res.text, 'lxml')
-    quotes1 = soup.find_all('div', class_='c-best-rates')
-    quotes2 = soup.find_all('div', class_='c-best-rates')
-    price_sell = None
-    price_buy = None
-    for q in quotes1:
-        price_sell = str(float((q.text.split(' ')[6])[:5]))[:-1]
-    for q in quotes2:
-        price_buy = str(float((q.text.split(' ')[7])[:5]))[:-1]
-    return price_sell, price_buy
+    # # res = requests.get(url='https://myfin.by/currency/minsk')
+    # # soup = BeautifulSoup(res.text, 'lxml')
+    # # quotes1 = soup.find_all('div', class_='c-best-rates')
+    # # quotes2 = soup.find_all('div', class_='c-best-rates')
+    # # price_sell = None
+    # price_buy = None
+    # for q in quotes1:
+    #     price_sell = str((q.text.split(' ')[6])[:5])[:-1]
+    # for q in quotes2:
+    #     price_buy = str((q.text.split(' ')[6])[:5])[:-1]
+    res = requests.get(url='https://www.nbrb.by/api/exrates/rates?periodicity=0')
+    price = res.json()[7]['Cur_OfficialRate']
+    return price
 
 
 # Start
@@ -47,7 +49,7 @@ async def send_start(message: types.Message):
     d1 = await db.get_fin_date()
     mes_str = f"Остаток: {s1} BYN по {d1}\nБаланс суточный: {s2} BYN\n" + \
               f"Остаток на сегодня: {s3} BYN\n" + \
-              f"Стоимость доллара: {get_dollar()[0]} Br, {get_dollar()[1]} Br\n" + \
+              f"Курс доллара: {get_dollar()} Br\n" + \
               f"Стоимость 95 бензина: {get_fuel()} Br"
     await message.answer(mes_str, reply_markup=start)
 
@@ -108,14 +110,14 @@ async def daily_balance_update(bot: Bot):
     s2 = Decimal(await db.get_daily())
     today = Decimal(await db.get_today())
     s1 = s1 - s2
-    s3 = s3 + s2
+    s3 = today + s2
     d1 = await db.get_fin_date()
     await db.set_overal_scheduler(s1)
     await db.set_today(today)
     mes_str = f"Обновление баланса прошло успешно.\n" \
               f"Остаток: {s1} BYN по {d1}\nБаланс суточный: {s2} BYN\n" + \
               f"Остаток на сегодня: {s3} BYN\n" + \
-              f"Стоимость доллара: {get_dollar()[0]} Br, {get_dollar()[1]} Br\n" + \
+              f"Курс доллара: {get_dollar()} Br\n" + \
               f"Стоимость 95 бензина: {get_fuel()} Br"
     await bot.send_message(chat_id=5508567586, text=mes_str, reply_markup=start)
 
@@ -130,7 +132,7 @@ async def go_back(callback: types.CallbackQuery, state: FSMContext):
     d1 = await db.get_fin_date()
     mes_str = f"Остаток: {s1} BYN по {d1}\nБаланс суточный: {s2} BYN\n" + \
               f"Остаток на сегодня: {s3} BYN\n" + \
-              f"Стоимость доллара: {get_dollar()[0]} Br, {get_dollar()[1]} Br\n" + \
+              f"Курс доллара: {get_dollar()} Br\n" + \
               f"Стоимость 95 бензина: {get_fuel()} Br"
     await callback.message.answer(mes_str, reply_markup=start)
 
