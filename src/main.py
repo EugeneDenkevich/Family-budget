@@ -18,7 +18,6 @@ async def start_bot(_):
     except Exception:
         print("--- DB has not connected ---", traceback.format_exc())
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
-    # scheduler = AsyncIOScheduler(timezone='Etc/UTC')
     print(datetime.now())
     scheduler.add_job(balance_handlers.daily_balance_update, trigger='cron', hour='6',
                       minute='30', kwargs={'bot': bot})

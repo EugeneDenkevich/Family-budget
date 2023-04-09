@@ -127,7 +127,6 @@ async def set_today(summ):
 
 async def set_overal_scheduler(summ):
     connect_db()
-    summ = summ - Decimal((await get_daily()))
     cur.execute(f"UPDATE family_budget.overal_balance SET summ={summ}" +
                 "WHERE id = (SELECT MAX(id)" +
                 "FROM (SELECT * FROM family_budget.overal_balance) as timetalbe);")
