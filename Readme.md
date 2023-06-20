@@ -12,12 +12,8 @@ Try do the following:
 
 Before launching paste the existing bot's token in .env.example file.
 
-```
-bash
-```
+```bash
 cp .env.example .env
 cd src
 python main.py
-```
-bash
 ```
