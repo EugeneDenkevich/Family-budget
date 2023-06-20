@@ -1,13 +1,15 @@
-from aiogram import types, Dispatcher, Bot
-from create_bot import bot
-from keyboards import start, choose_change, cancel
-import mysql_bd as db
-from models import Balance, Buy
-from aiogram.dispatcher import FSMContext
 from decimal import Decimal
-from aiogram_calendar.simple_calendar import calendar_callback, SimpleCalendar
 import requests
 from bs4 import BeautifulSoup
+
+from aiogram import types, Dispatcher, Bot
+from aiogram.dispatcher import FSMContext
+
+from create_bot import bot
+from keyboards.keyboards import start, choose_change, cancel
+from utils.databases import mysql_bd as db
+from models import Balance, Buy
+from utils.simple_calendar import calendar_callback, SimpleCalendar
 
 
 def get_fuel():
@@ -25,16 +27,20 @@ def get_fuel():
 
 
 def get_dollar():
+    price_sell = '0.00'
+    price_buy = '0.00'
     res = requests.get(url='https://myfin.by/currency/usd')
     soup = BeautifulSoup(res.text, 'lxml')
-    quotes = soup.find('div', class_='c-best-rates').find('tbody').contents
-    price_sell = quotes[0].contents[1].text
-    price_buy = quotes[0].contents[2].text
+    try:
+        quotes = soup.find('div', class_='c-best-rates').find('tbody').contents
+        price_sell = quotes[0].contents[1].text
+        price_buy = quotes[0].contents[2].text
+    except:
+        pass
     return price_sell, price_buy
 
 
 # Start
-
 async def send_start(message: types.Message):
     s1 = str((await db.get_overal())[0])
     s2 = await db.get_daily()
@@ -48,7 +54,6 @@ async def send_start(message: types.Message):
 
 
 # Balance overal
-
 async def change_overal(callback: types.CallbackQuery):
     await Balance.date.set()
     await callback.message.answer('По какое число?', reply_markup=await SimpleCalendar().start_calendar())
@@ -63,11 +68,20 @@ async def process_calendar(callback: types.CallbackQuery, callback_data: dict, s
         await callback.message.answer('Введите сумму:', reply_markup=cancel)
 
 
+async def error_date(message: types.Message):
+    await message.answer('Ошибка! Выберите дату в календаре выше.')
+
+
 async def set_overal(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        await db.set_overal(message.text, data['date'])
-    await state.finish()
-    await send_start(message)
+    overal = message.text
+    try:
+        overal = int(message.text)
+        async with state.proxy() as data:
+            await db.set_overal(overal, data['date'])
+        await state.finish()
+        await send_start(message)
+    except:
+        await message.answer('Ошибка! Введите целое число, до 100 000 000:')
 
 
 async def change_daily(callback: types.CallbackQuery):
@@ -82,7 +96,6 @@ async def set_daily(message: types.Message, state: FSMContext):
 
 
 # Balance for today
-
 async def buy(callback: types.CallbackQuery):
     await Buy.buy.set()
     await callback.message.answer('Сумма:', reply_markup=cancel)
@@ -95,8 +108,7 @@ async def set_today(message: types.Message, state: FSMContext):
     await send_start(message)
 
 
-# Scheduled functions
-
+# Scheduled function
 async def daily_balance_update(bot: Bot):
     overal = (await db.get_overal())[0]
     daily = Decimal(await db.get_daily())
@@ -115,7 +127,6 @@ async def daily_balance_update(bot: Bot):
 
 
 # Cancel/Back
-
 async def go_back(callback: types.CallbackQuery, state: FSMContext):
     await state.finish()
     s1 = str((await db.get_overal())[0])
@@ -134,8 +145,8 @@ def register_handlers(dp: Dispatcher):
     # Start
     dp.register_message_handler(send_start, commands=["start"])
 
-    # Overal
     dp.register_callback_query_handler(change_overal, text="change")
+    dp.register_message_handler(error_date, state=Balance.date)
     dp.register_callback_query_handler(
         process_calendar, calendar_callback.filter(), state=Balance.date)
     dp.register_message_handler(set_overal, state=Balance.overal)

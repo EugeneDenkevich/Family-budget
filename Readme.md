@@ -7,3 +7,17 @@ Try do the following:
 - Click BUY if you've bougth something and type a sum
 
 > Projest is permanently impruved.
+
+## Launching
+
+Before launching paste the existing bot's token in .env.example file.
+
+```
+bash
+```
+cp .env.example .env
+cd src
+python main.py
+```
+bash
+```

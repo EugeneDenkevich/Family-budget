@@ -19,6 +19,6 @@ cancel = InlineKeyboardMarkup(row_width=2).add(
     InlineKeyboardButton(text='Отмена',callback_data='cancel'))
 
 registration = InlineKeyboardMarkup(row_width=2).add(
-    InlineKeyboardButton(text='Войти', callback_data='Enter'),
+    InlineKeyboardButton(text='Войти', callback_data='enter'),
     InlineKeyboardButton(text='Регистрация', callback_data='register')
 )

@@ -2,10 +2,8 @@ from decimal import Decimal
 import mysql.connector as sq
 from itertools import chain
 from datetime import datetime
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
+from data.config import DB_USER, DB_PASS
 
 
 def start_db():
@@ -18,8 +16,8 @@ def connect_db():
 
     db = sq.connect(
         host="localhost",
-        user=os.getenv('DB_USER'),
-        passwd=os.getenv('DB_PASS'),
+        user=DB_USER,
+        passwd=DB_PASS,
         port="3306"
     )
 
@@ -30,35 +28,49 @@ def create_tables():
     cur.execute("CREATE DATABASE IF NOT EXISTS family_budget;")
     db.commit()
 
+    cur.execute("CREATE TABLE IF NOT EXISTS family_budget.users (\
+                    id_user BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
+                    login VARCHAR(255),\
+                    password TEXT\
+                    ) ENGINE = InnoDB;")
+
     cur.execute("CREATE TABLE IF NOT EXISTS family_budget.overal_balance (\
-                    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
                     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\
                     summ DECIMAL(10,2),\
                     fin_date VARCHAR(20),\
-                    days VARCHAR(30)\
+                    days VARCHAR(30),\
+                    user_id BIGINT,\
+                    FOREIGN KEY (user_id) REFERENCES users (id_user)\
                     ) ENGINE = InnoDB;")
 
     cur.execute("CREATE TABLE IF NOT EXISTS family_budget.daily_balance (\
-                    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
                     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\
-                    summ DECIMAL(10,2)\
+                    summ DECIMAL(10,2),\
+                    user_id BIGINT,\
+                    FOREIGN KEY (user_id) REFERENCES users (id_user)\
                     ) ENGINE = InnoDB;")
 
     cur.execute("CREATE TABLE IF NOT EXISTS family_budget.today_balance (\
-                    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
+                    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
                     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\
-                    summ DECIMAL(10,2)\
+                    summ DECIMAL(10,2),\
+                    user_id BIGINT,\
+                    FOREIGN KEY (user_id) REFERENCES users (id_user)\
                     ) ENGINE = InnoDB;")
     db.commit()
 
 
-# Getters for balances ------------
+# Getters ------------
 
 async def get_overal():
     connect_db()
     cur.execute("SELECT summ, days FROM family_budget.overal_balance WHERE id =\
                 (SELECT MAX(id) FROM family_budget.overal_balance);")
     res = cur.fetchall()
+    if res == []:
+        return 0, 0
     return res[0][0], res[0][1]
 
 
@@ -67,6 +79,8 @@ async def get_daily():
     cur.execute("SELECT summ FROM family_budget.daily_balance WHERE id =\
                 (SELECT MAX(id) FROM family_budget.daily_balance);")
     res = cur.fetchall()
+    if res == []:
+        return 0
     return str(*chain(*res))
 
 
@@ -75,6 +89,8 @@ async def get_today():
     cur.execute("SELECT summ FROM family_budget.today_balance WHERE id =\
                 (SELECT MAX(id) FROM family_budget.today_balance);")
     res = cur.fetchall()
+    if res == []:
+        return 0
     return str(*chain(*res))
 
 
@@ -86,7 +102,7 @@ async def get_fin_date():
     return str(*chain(*res))
 
 
-# Setters for balances ------------
+# Setters ------------
 
 async def set_overal(summ, sum_date: str):
     connect_db()
@@ -127,7 +143,10 @@ async def set_today(summ):
 
 async def set_overal_scheduler(summ):
     connect_db()
-    cur.execute(f"UPDATE family_budget.overal_balance SET summ={summ}" +
-                "WHERE id = (SELECT MAX(id)" +
-                "FROM (SELECT * FROM family_budget.overal_balance) as timetalbe);")
+    try:
+        id = "SELECT MAX(id) FROM (SELECT * FROM family_budget.overal_balance) as timetalbe"
+    except:
+        return
+    cur.execute(
+        "UPDATE family_budget.overal_balance SET summ=%s WHERE id = (%s);", [summ, id])
     db.commit()
